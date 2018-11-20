@@ -21,7 +21,7 @@ new Vue({
             if (this.newMessage != '') {
                 this.ws.send(
                     JSON.stringify({
-                        'UserId': "3"
+                        'UserId': "2"
                     })
                 );
                 this.newMessage = '';

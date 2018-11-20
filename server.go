@@ -3,19 +3,25 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan Message)
+// var clients = make(map[*websocket.Conn]bool)
+var clients = make(map[string]*websocket.Conn)
+
+// var broadcast = make(chan Message)
+var message_queue = make(chan Message)
 
 var upgrader = websocket.Upgrader{}
 
 type Message struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Message  string `json:"message"`
+	UserId string
+}
+
+type NewMessage struct {
+	Message string
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
@@ -23,33 +29,50 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer ws.Close()
+	// defer ws.Close()
 
-	clients[ws] = true
+	// clients[ws] = true
+	println("connect")
 
-	for {
-		var msg Message
-		err := ws.ReadJSON(&msg)
-		if err != nil {
-			log.Printf("error: %v", err)
-			delete(clients, ws)
-			break
-		}
-		broadcast <- msg
+	var msg Message
+	err = ws.ReadJSON(&msg)
+	println(msg.UserId)
+	if err != nil {
+		log.Printf("error: %v", err)
+		// delete(clients, ws)
 	}
+	clients[msg.UserId] = ws
 }
 
 func handleMessages() {
 	for {
-		msg := <-broadcast
-		for client := range clients {
-			err := client.WriteJSON(msg)
-			if err != nil {
-				log.Printf("error: %v", err)
-				client.Close()
-				delete(clients, client)
-			}
+		println("WAIT")
+		time.Sleep(2 * time.Second)
+		message := NewMessage{Message: "HEELLOO"}
+
+		userId := "2"
+
+		client, ok := clients[userId]
+
+		if ok == false {
+			continue
 		}
+
+		err := client.WriteJSON(message)
+		if err != nil {
+			println("error write json")
+			client.Close()
+			// delete(clients, userId)
+		}
+		// msg := <-broadcast
+		// for client := range clients {
+		// 	err := client.WriteJSON(msg)
+		// 	if err != nil {
+		// 		log.Printf("error: %v", err)
+		// 		client.Close()
+		// 		delete(clients, client)
+		// 	}
+		// }
 	}
 }
 
